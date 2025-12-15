@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2E7D32">
+    <meta name="description" content="Game edukasi pilah sampah - Buang sampah pada tempatnya!">
+    <title>Game Pilah Sampah - Edukasi Lingkungan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+            position: fixed;
+            width: 100%;
+        }
+        
+        #gameContainer {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 10px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        h1 {
+            color: #2E7D32;
+            font-size: clamp(20px, 5vw, 28px);
+            margin-bottom: 8px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #scoreBoard {
+            display: flex;
+            justify-content: space-around;
+            margin: 8px 0;
+            font-size: clamp(16px, 4vw, 20px);
+            font-weight: bold;
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .score {
+            color: #2E7D32;
+        }
+        
+        .lives {
+            color: #D32F2F;
+        }
+        
+        .level {
+            color: #1976D2;
+        }
+        
+        #canvasWrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #2E7D32;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #E3F2FD 0%, #FFF9C4 100%);
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            touch-action: none;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+        
+        #currentBinIndicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: clamp(14px, 3.5vw, 16px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 10px 0;
+            padding: 0 5px;
+        }
+        
+        .control-btn {
+            flex: 1;
+            background: white;
+            border: 3px solid #2E7D32;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #2E7D32;
+            cursor: pointer;
+            user-select: none;
+            touch-action: manipulation;
+            transition: all 0.1s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .control-btn:active {
+            transform: scale(0.95);
+            background: #E8F5E9;
+        }
+        
+        .control-btn.pressed {
+            transform: scale(0.95);
+            background: #E8F5E9;
+        }
+        
+        #switchBtn {
+            flex: 1.5;
+            background: linear-gradient(135deg, #4CAF50, #FFC107, #F44336);
+            color: white;
+            border-color: #333;
+        }
+        
+        #switchBtn:active {
+            background: linear-gradient(135deg, #45a049, #ffb300, #da190b);
+        }
+        
+        #pauseBtn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            border: 2px solid #2E7D32;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 11;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #pauseBtn:active {
+            transform: scale(0.95);
+        }
+        
+        #instructions {
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: clamp(12px, 3vw, 14px);
+            line-height: 1.6;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .instruction-title {
+            font-weight: bold;
+            color: #2E7D32;
+            margin-bottom: 6px;
+            font-size: clamp(13px, 3.5vw, 15px);
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 99;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            text-align: center;
+            z-index: 100;
+            width: 90%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal h2 {
+            color: #2E7D32;
+            margin-bottom: 15px;
+            font-size: clamp(22px, 5vw, 28px);
+        }
+        
+        .modal p {
+            font-size: clamp(14px, 3.5vw, 16px);
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: clamp(16px, 4vw, 18px);
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            margin: 8px;
+            transition: background 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            min-width: 140px;
+        }
+        
+        .btn:active {
+            background: #45a049;
+            transform: scale(0.98);
+        }
+        
+        .btn-secondary {
+            background: #2196F3;
+        }
+        
+        .btn-secondary:active {
+            background: #1976D2;
+        }
+        
+        .trash-types {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .trash-type {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 6px solid;
+        }
+        
+        .trash-type.organic {
+            border-color: #4CAF50;
+        }
+        
+        .trash-type.anorganic {
+            border-color: #FFC107;
+        }
+        
+        .trash-type.b3 {
+            border-color: #F44336;
+        }
+        
+        .trash-type h3 {
+            margin-bottom: 8px;
+            font-size: clamp(16px, 4vw, 18px);
+        }
+        
+        .trash-type p {
+            font-size: clamp(12px, 3vw, 14px);
+            color: #666;
+            text-align: left;
+        }
+        
+        .trash-legend {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 8px;
+            font-size: clamp(11px, 2.5vw, 13px);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .color-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            border: 1px solid #333;
+        }
+        
+        #comboDisplay {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #FF6B6B, #FFA500);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: clamp(16px, 4vw, 20px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10;
+            pointer-events: none;
+            display: none;
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.1); }
+        }
+        
+        @media (max-width: 480px) {
+            #gameContainer {
+                padding: 5px;
+            }
+            
+            h1 {
+                margin-bottom: 5px;
+            }
+            
+            #scoreBoard {
+                padding: 10px;
+                margin: 5px 0;
+                font-size: 14px;
+            }
+            
+            .control-btn {
+                padding: 18px 10px;
+                font-size: 20px;
+            }
+            
+            #instructions {
+                padding: 10px;
+                margin-bottom: 5px;
+            }
+            
+            #pauseBtn {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+        }
+        
+        @media (orientation: landscape) and (max-height: 600px) {
+            h1 {
+                font-size: 18px;
+                margin-bottom: 3px;
+            }
+            
+            #scoreBoard {
+                padding: 8px;
+                margin: 3px 0;
+                font-size: 14px;
+            }
+            
+            #instructions {
+                padding: 8px;
+                font-size: 11px;
+                margin-bottom: 3px;
+            }
+            
+            .control-btn {
+                padding: 12px;
+                font-size: 18px;
+            }
+            
+            #controls {
+                margin: 5px 0;
+            }
+            
+            #pauseBtn {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1>🌍 Game Pilah Sampah 🌍</h1>
+        <div id="scoreBoard">
+            <div class="score">Skor: <span id="score">0</span></div>
+            <div class="level">Level: <span id="level">1</span></div>
+            <div class="lives">❤️ <span id="lives">3</span></div>
+        </div>
+        
+        <div id="canvasWrapper">
+            <button id="pauseBtn">⏸️</button>
+            <div id="currentBinIndicator">Tempat: <span id="binType">Organik</span></div>
+            <div id="comboDisplay">COMBO x<span id="comboCount">0</span>! 🔥</div>
+            <canvas id="gameCanvas"></canvas>
+        </div>
+        
+        <div id="controls">
+            <button class="control-btn" id="leftBtn">⬅️</button>
+            <button class="control-btn" id="switchBtn">🔄 GANTI</button>
+            <button class="control-btn" id="rightBtn">➡️</button>
+        </div>
+        
+        <div id="instructions">
+            <div class="instruction-title">📱 Cara Main:</div>
+            Tangkap sampah sesuai warna tempat sampah! Semakin banyak combo, semakin tinggi skor! 🎯
+        </div>
+    </div>
+    
+    <!-- Welcome Modal -->
+    <div class="modal-overlay" id="welcomeOverlay"></div>
+    <div class="modal" id="welcomeModal">
+        <h2>🌍 Selamat Datang! 🌍</h2>
+        <p style="font-size: 16px; margin: 15px 0;">Mari belajar memilah sampah dengan cara yang menyenangkan!</p>
+        
+        <div class="trash-types">
+            <div class="trash-type organic">
+                <h3 style="color: #4CAF50;">🍎 Sampah Organik (Hijau)</h3>
+                <p>Sisa makanan, buah, sayuran, daun</p>
+            </div>
+            <div class="trash-type anorganic">
+                <h3 style="color: #FFA500;">📦 Sampah Anorganik (Kuning)</h3>
+                <p>Kertas, plastik, kardus, botol</p>
+            </div>
+            <div class="trash-type b3">
+                <h3 style="color: #F44336;">⚠️ Sampah B3 (Merah)</h3>
+                <p>Baterai, lampu, bahan kimia berbahaya</p>
+            </div>
+        </div>
+        
+        <p style="margin-top: 20px;"><strong>Tips:</strong> Tangkap beruntun untuk combo bonus! 🔥</p>
+        <button class="btn" id="startBtn">🎮 Mulai Main!</button>
+    </div>
+    
+    <!-- Pause Modal -->
+    <div class="modal-overlay" id="pauseOverlay"></div>
+    <div class="modal" id="pauseModal">
+        <h2>⏸️ Game Dijeda</h2>
+        <p style="font-size: 18px; margin: 20px 0;">Skor Saat Ini: <span id="pauseScore" style="color: #4CAF50; font-weight: bold;">0</span></p>
+        <button class="btn" id="resumeBtn">▶️ Lanjutkan</button>
+        <button class="btn btn-secondary" id="restartFromPauseBtn">🔄 Main Ulang</button>
+    </div>
+    
+    <!-- Game Over Modal -->
+    <div class="modal-overlay" id="gameOverOverlay"></div>
+    <div class="modal" id="gameOverModal">
+        <h2>🎮 Game Selesai!</h2>
+        <p style="font-size: 24px; font-weight: bold; color: #2E7D32; margin: 15px 0;">
+            Skor: <span id="finalScore">0</span>
+        </p>
+        <p style="font-size: 18px; color: #1976D2;">
+            Level Tertinggi: <span id="finalLevel">1</span>
+        </p>
+        <p style="margin: 20px 0; color: #666; line-height: 1.8;">
+            <strong style="color: #2E7D32;">Bagus sekali! 🎉</strong><br>
+            Terus belajar memilah sampah dengan benar untuk menjaga lingkungan kita! 🌱
+        </p>
+        <button class="btn" id="restartBtn">🔄 Main Lagi</button>
+        <button class="btn btn-secondary" id="tutorialBtn">📚 Lihat Panduan</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let scaleFactor = 1;
+        
+        function resizeCanvas() {
+            const container = document.getElementById('canvasWrapper');
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            let width = containerWidth - 20;
+            let height = width * 0.85;
+            
+            if (height > containerHeight - 20) {
+                height = containerHeight - 20;
+                width = height / 0.85;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            scaleFactor = width / 600;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(resizeCanvas, 100);
+        });
+        
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let combo = 0;
+        let gameRunning = false;
+        let gamePaused = false;
+        let binPosition = 0;
+        let currentBinType = 0;
+        let leftPressed = false;
+        let rightPressed = false;
+        
+        const trashTypes = [
+            { name: 'Organik', color: '#4CAF50', items: ['🍎', '🍌', '🥕', '🍃', '🌽', '🥬', '🍊', '🥔'] },
+            { name: 'Anorganik', color: '#FFC107', items: ['📄', '🥤', '📦', '🍾', '👟', '🧃', '📰', '🧻'] },
+            { name: 'B3', color: '#F44336', items: ['🔋', '💡', '🧪', '⚗️', '🧴', '💊', '🔬', '⚠️'] }
+        ];
+        
+        let fallingTrash = [];
+        let keys = {};
+        let lastSpawnTime = 0;
+        let spawnInterval = 1500;
+        
+        class Trash {
+            constructor() {
+                this.type = Math.floor(Math.random() * 3);
+                this.item = trashTypes[this.type].items[
+                    Math.floor(Math.random() * trashTypes[this.type].items.length)
+                ];
+                this.x = Math.random() * (canvas.width - 40 * scaleFactor);
+                this.y = -40 * scaleFactor;
+                this.speed = (1.2 + Math.random() * 0.8 + level * 0.2) * scaleFactor;
+                this.size = 32 * scaleFactor;
+            }
+            
+            update() {
+                this.y += this.speed;
+            }
+            
+            draw() {
+                ctx.font = `${this.size}px Arial`;
+                ctx.fillText(this.item, this.x, this.y);
+            }
+            
+            isOffScreen() {
+                return this.y > canvas.height;
+            }
+            
+            checkCollision(binX, binY, binWidth, binHeight, binType) {
+                return this.x > binX && 
+                       this.x < binX + binWidth && 
+                       this.y > binY - 20 * scaleFactor && 
+                       this.y < binY + binHeight &&
+                       this.type === binType;
+            }
+        }
+        
+        function drawBin() {
+            const binWidth = 80 * scaleFactor;
+            const binHeight = 60 * scaleFactor;
+            const binY = canvas.height - binHeight - 10 * scaleFactor;
+            const binColor = trashTypes[currentBinType].color;
+            
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 10 * scaleFactor;
+            ctx.shadowOffsetY = 5 * scaleFactor;
+            
+            ctx.fillStyle = binColor;
+            ctx.fillRect(binPosition, binY, binWidth, binHeight);
+            
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
+            
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3 * scaleFactor;
+            ctx.strokeRect(binPosition, binY, binWidth, binHeight);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${12 * scaleFactor}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText(trashTypes[currentBinType].name, binPosition + binWidth/2, binY + binHeight/2 + 4 * scaleFactor);
+        }
+        
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+            document.getElementById('level').textContent = level;
+            document.getElementById('binType').textContent = trashTypes[currentBinType].name;
+        }
+        
+        function showCombo() {
+            if (combo >= 3) {
+                const comboDisplay = document.getElementById('comboDisplay');
+                document.getElementById('comboCount').textContent = combo;
+                comboDisplay.style.display = 'block';
+                setTimeout(() => {
+                    comboDisplay.style.display = 'none';
+                }, 1000);
+            }
+        }
+        
+        function spawnTrash() {
+            const currentTime = Date.now();
+            if (currentTime - lastSpawnTime > spawnInterval && gameRunning && !gamePaused) {
+                fallingTrash.push(new Trash());
+                lastSpawnTime = currentTime;
+            }
+        }
+        
+        function gameLoop() {
+            if (!gameRunning || gamePaused) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const moveSpeed = 6 * scaleFactor;
+            const binWidth = 80 * scaleFactor;
+            
+            if ((keys['ArrowLeft'] || leftPressed) && binPosition > 0) {
+                binPosition -= moveSpeed;
+            }
+            if ((keys['ArrowRight'] || rightPressed) && binPosition < canvas.width - binWidth) {
+                binPosition += moveSpeed;
+            }
+            
+            spawnTrash();
+            
+            const binHeight = 60 * scaleFactor;
+            const binY = canvas.height - binHeight - 10 * scaleFactor;
+            
+            for (let i = fallingTrash.length - 1; i >= 0; i--) {
+                const trash = fallingTrash[i];
+                trash.update();
+                trash.draw();
+                
+                if (trash.checkCollision(binPosition, binY, binWidth, binHeight, currentBinType)) {
+                    combo++;
+                    const comboBonus = Math.floor(combo / 3) * 5;
+                    score += 10 + comboBonus;
+                    
+                    if (score >= level * 100) {
+                        level++;
+                        spawnInterval = Math.max(800, 1500 - level * 100);
+                    }
+                    
+                    updateScore();
+                    showCombo();
+                    fallingTrash.splice(i, 1);
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                } else if (trash.isOffScreen()) {
+                    combo = 0;
+                    lives--;
+                    updateScore();
+                    fallingTrash.splice(i, 1);
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate([100, 50, 100]);
+                    }
+                    
+                    if (lives <= 0) {
+                        endGame();
+                    }
+                }
+            }
+            
+            drawBin();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function showModal(modalId, overlayId) {
+            document.getElementById(overlayId).style.display = 'block';
+            document.getElementById(modalId).style.display = 'block';
+        }
+        
+        function hideModal(modalId, overlayId) {
+            document.getElementById(overlayId).style.display = 'none';
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        function pauseGame() {
+            if (!gameRunning || gamePaused) return;
+            gamePaused = true;
+            document.getElementById('pauseScore').textContent = score;
+            showModal('pauseModal', 'pauseOverlay');
+        }
+        
+        function resumeGame() {
+            gamePaused = false;
+            hideModal('pauseModal', 'pauseOverlay');
+            gameLoop();
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalLevel').textContent = level;
+            showModal('gameOverModal', 'gameOverOverlay');
+        }
+        
+        function startGame() {
+            score = 0;
+            lives = 30;
+            level = 1;
+            combo = 0;
+            gameRunning = true;
+            gamePaused = false;
+            binPosition = canvas.width / 2 - 40 * scaleFactor;
+            currentBinType = 0;
+            fallingTrash = [];
+            lastSpawnTime = 0;
+            spawnInterval = 1500;
+            updateScore();
+            hideModal('welcomeModal', 'welcomeOverlay');
+            hideModal('gameOverModal', 'gameOverOverlay');
+            hideModal('pauseModal', 'pauseOverlay');
+            gameLoop();
+        }
+        
+        // Touch controls
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+        
+        leftBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            leftPressed = true;
+            leftBtn.classList.add('pressed');
+        });
+        
+        leftBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            leftPressed = false;
+            leftBtn.classList.remove('pressed');
+        });
+        
+        rightBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            rightPressed = true;
+            rightBtn.classList.add('pressed');
+        });
+        
+        rightBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            rightPressed = false;
+            rightBtn.classList.remove('pressed');
+        });
+        
+        document.getElementById('switchBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            if (gameRunning && !gamePaused) {
+                currentBinType = (currentBinType + 1) % 3;
+                updateScore();
+                if (navigator.vibrate) {
+                    navigator.vibrate(30);
+                }
+            }
+        });
+        
+        // Mouse controls
+        leftBtn.addEventListener('mousedown', () => {
+            leftPressed = true;
+            leftBtn.classList.add('pressed');
+        });
+        leftBtn.addEventListener('mouseup', () => {
+            leftPressed = false;
+            leftBtn.classList.remove('pressed');
+        });
+        rightBtn.addEventListener('mousedown', () => {
+            rightPressed = true;
+            rightBtn.classList.add('pressed');
+        });
+        rightBtn.addEventListener('mouseup', () => {
+            rightPressed = false;
+            rightBtn.classList.remove('pressed');
+        });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === ' ' && gameRunning && !gamePaused) {
+                e.preventDefault();
+                currentBinType = (currentBinType + 1) % 3;
+                updateScore();
+            }
+            if (e.key === 'Escape' && gameRunning) {
+                e.preventDefault();
+                if (gamePaused) {
+                    resumeGame();
+                } else {
+                    pauseGame();
+                }
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        // Button events
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', startGame);
+        document.getElementById('restartFromPauseBtn').addEventListener('click', startGame);
+        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+        document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+        document.getElementById('tutorialBtn').addEventListener('click', () => {
+            hideModal('gameOverModal', 'gameOverOverlay');
+            showModal('welcomeModal', 'welcomeOverlay');
+        });
+        
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        // Initialize - Show welcome screen
+        binPosition = canvas.width / 2 - 40 * scaleFactor;
+        updateScore();
+        showModal('welcomeModal', 'welcomeOverlay');
+    </script>
+</body>
+</html>
